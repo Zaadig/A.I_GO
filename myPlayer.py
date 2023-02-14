@@ -107,7 +107,6 @@ class myPlayer(PlayerInterface):
         # Calculate the difference in score between the two players.
         scores = (self._board._nbBLACK , self._board._nbWHITE)
         score_diff = scores[self._mycolor -1] - scores[Goban.Board.flip(self._mycolor) -1]
-
         return score_diff
 
 
