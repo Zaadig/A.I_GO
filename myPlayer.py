@@ -9,7 +9,6 @@ import time
 import Goban 
 from random import choice
 from playerInterface import *
-from copy import deepcopy
 
 class myPlayer(PlayerInterface):
     ''' Example of a random player for the go. The only tricky part is to be able to handle
