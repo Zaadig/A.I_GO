@@ -29,7 +29,8 @@ class myPlayer(PlayerInterface):
             print("Referee told me to play but the game is over!")
             return "PASS" 
         
-        best_move = monte_carlo_tree_search(self._board,self._mycolor,200)
+        # best_move = monte_carlo_tree_search(self._board,self._mycolor,100)
+        best_move = monte_carlo_tree_search(self._board, self._mycolor, 20)
         self._board.push(best_move)
         print("I am playing ", self._board.move_to_str(best_move))
         return Goban.Board.flat_to_name(best_move)
