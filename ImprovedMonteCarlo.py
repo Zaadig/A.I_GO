@@ -5,7 +5,7 @@ from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import time
 from random import choice
-from myNeuralNetwork import position_predict
+from Predictor import position_predict
 
 def get_stones_positions(board):
         black_stones = []
