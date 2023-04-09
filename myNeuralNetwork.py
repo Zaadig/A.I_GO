@@ -77,7 +77,7 @@ def raw_to_tensor(black_stones,white_stones):
 filename = 'dataset.npy'
 
 if os.path.isfile(filename):
-    X,y = pickle.load(open(filename, 'rb'))
+    data_tensor,y = pickle.load(open(filename, 'rb'))
 else :
    
 
