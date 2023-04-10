@@ -1,26 +1,29 @@
+import numpy as np
 import Goban 
 from random import choice
 from copy import deepcopy
 import math
 from myNeuralNetwork import position_predict
+from numpy.random import default_rng
 
 def get_stones_positions(board):
-        black_stones = []
-        white_stones = []
-        flattened_board = board.get_board()
-        for i in range(len(flattened_board)):
-            if flattened_board[i] == 1:
-                black_stones.append(Goban.Board.flat_to_name(i))
-            elif flattened_board[i] == 2:
-                white_stones.append(Goban.Board.flat_to_name(i))
-        return black_stones, white_stones
+    black_stones = []
+    white_stones = []
+    flattened_board = np.array(board.get_board())
+    black_stones = np.argwhere(flattened_board == Goban.Board._BLACK)
+    white_stones = np.argwhere(flattened_board == Goban.Board._WHITE)
+    black_stones = [Goban.Board.flat_to_name(pos) for pos in black_stones]
+    white_stones = [Goban.Board.flat_to_name(pos) for pos in white_stones]
+    return black_stones, white_stones
+
 
 def monte_carlo_tree_search(board, color, num_simulations):
     
     def simulate_game(board):
-        board_cpy = deepcopy(board)
+        board_cpy = board.copy()
+        rng = default_rng()
         while not board_cpy.is_game_over():
-            move = choice(board_cpy.legal_moves())
+            move = rng.choice(board_cpy.legal_moves())
             board_cpy.push(move)
         result = board_cpy.result()
         if result == "1-0":
@@ -32,7 +35,7 @@ def monte_carlo_tree_search(board, color, num_simulations):
 
     class Node:
         def __init__(self, board, parent=None, move=None):
-            self.board = deepcopy(board)
+            self.board = board
             self.parent = parent
             self.move = move
             self.visits = 0
@@ -42,7 +45,8 @@ def monte_carlo_tree_search(board, color, num_simulations):
             self.nn_evaluation = position_predict(black_stones, white_stones)
 
         def is_fully_expanded(self):
-            return len(self.children) == len(self.board.legal_moves())
+            explored_moves = {child.move for child in self.children}
+            return len(explored_moves) == len(self.board.legal_moves())
 
         def select_child(self):
             unexplored_moves = [move for move in self.board.legal_moves()
@@ -63,9 +67,10 @@ def monte_carlo_tree_search(board, color, num_simulations):
             if self.visits == 0:
                 return float('inf')
             else:
-                return (self.wins / self.visits) + \
-                       1.41 * math.sqrt(math.log(self.parent.visits) / self.visits) + \
-                       self.nn_evaluation
+                uct_score = (self.wins / self.visits) + \
+                    1.41 * math.sqrt(math.log(self.parent.visits) / self.visits) + \
+                    self.nn_evaluation
+            return uct_score if self.parent is None else uct_score - self.parent.nn_evaluation
 
         def simulate(self):
             winner = simulate_game(self.board)

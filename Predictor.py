@@ -40,13 +40,11 @@ def predict_all(data):
     predicted_values = []
     
     for i in range(100):
-        tensor = raw_to_tensor(data[i]["black_stones"], data[i]["white_stones"])
-        tensor = np.expand_dims(tensor, axis=0)
-        predicted_value = model.predict(tensor)[0,0]
+        predicted_value = position_predict(data[i]["black_stones"], data[i]["white_stones"])
         true_value = data[i]["black_wins"] / data[i]["rollouts"]
         
         prediction = (predicted_value,true_value)
         predicted_values.append(prediction)
-        print(prediction)
+        print("predicted_value = {} - true_value = {}".format(predicted_value,true_value))
     
     return np.array(predicted_values)
