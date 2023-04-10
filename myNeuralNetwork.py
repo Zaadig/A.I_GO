@@ -4,6 +4,7 @@ from keras.layers import Dense, Dropout, Activation, Flatten
 from keras.layers import Conv2D, BatchNormalization,LeakyReLU
 from keras.callbacks import Callback
 from keras.callbacks import EarlyStopping
+from keras import metrics
 from keras.optimizers import Adam
 import keras.optimizers as optimizers
 import gzip, os
@@ -117,7 +118,8 @@ else :
     data_tensor = expand_dataset(data_tensor)
 
     y = np.array([(data[i]["black_wins"]/data[i]["rollouts"], data[i]["white_wins"]/data[i]["rollouts"]) for i in range(len(data))])
-    y = np.repeat(y, 8, axis=0)
+    # y = np.repeat(y, 8, axis=0)
+    y = np.concatenate((y, y, y, y, y, y, y, y))
 
     pickle.dump((data_tensor, y), open(filename, 'wb'))
     
@@ -152,15 +154,28 @@ for val_index, holdout_index in sss2.split(X_test, np.argmax(y_test, axis=1)):
 
 model = Sequential()
 
-model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu', padding='same', input_shape=(2, board_size+2, board_size+2)))
-model.add(Conv2D(filters=32, kernel_size=(2, 2), activation='relu'))
+model.add(Conv2D(filters=64, kernel_size=(3, 3), padding='same', input_shape=(2, board_size+2, board_size+2)))
+model.add(LeakyReLU(alpha=0.1))
+model.add(BatchNormalization())
+model.add(Dropout(0.5))
+
+model.add(Conv2D(filters=32, kernel_size=(2, 2)))
+model.add(LeakyReLU(alpha=0.1))
+model.add(BatchNormalization())
+model.add(Dropout(0.5))
+
 model.add(Flatten())
-model.add(Dense(64, activation='relu'))
-model.add(Dense(32, activation='relu'))
+model.add(Dense(64))
+model.add(LeakyReLU(alpha=0.1))
+model.add(Dropout(0.5))
+
+model.add(Dense(32))
+model.add(LeakyReLU(alpha=0.1))
+model.add(Dropout(0.5))
+
 model.add(Dense(2, activation='softmax'))
 
-model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
-
+model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', metrics.mean_absolute_error, metrics.mean_squared_error])
 
 class History(Callback):
     
@@ -173,14 +188,17 @@ class History(Callback):
         print(".",end="")
 history=[History()]
 
-model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=10, batch_size=64, callbacks=history)
+# Add early stopping callback
+early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='auto', restore_best_weights=True)
+
+model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=20, batch_size=64, callbacks=[history, early_stopping])
 
 model.summary()
 
 score = model.evaluate(X_test, y_test, verbose=0)
 print('Test loss:', score)
 
-model.save('my_model.h5')
+model.save('my_first_model.h5')
 
 
 # --------------------------------------------------------------------------------------------------------------------------------------------------------------
