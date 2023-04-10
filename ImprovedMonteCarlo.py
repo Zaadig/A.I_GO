@@ -40,7 +40,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             self.visits = 0
             self.wins = 0
             self.children = {}
-            self.nn_evaluation = None
+            self.nn_evaluation = 0.5
 
         def is_fully_expanded(self):
             return len(self.children) == len(self.board.legal_moves())
