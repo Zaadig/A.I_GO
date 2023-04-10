@@ -18,7 +18,7 @@ def get_stones_positions(board):
                 white_stones.append(Goban.Board.flat_to_name(i))
         return black_stones, white_stones
 
-def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8):
+def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperature=1):
     def simulate_game(board):
         board_cpy = deepcopy(board)
         while not board_cpy.is_game_over():
@@ -53,6 +53,8 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8):
                 return max(self.children.values(), key=lambda child: child.get_puct_score())
 
         def expand(self, move):
+            if self.board.is_game_over():
+                return self  # return the current node without expanding
             new_board = deepcopy(self.board)
             new_board.push(move)
             new_node = Node(new_board, parent=self, move=move)
@@ -63,10 +65,14 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8):
             if self.visits == 0:
                 return float('inf')
             else:
-                # Use a better exploration constant, e.g. 1/sqrt(2)
+                # Use temperature to control exploration
                 exploration_constant = 1 / math.sqrt(2)
-                return (self.wins / self.visits) + \
-                    exploration_constant * math.sqrt(math.log(self.parent.visits) / self.visits) * self.nn_evaluation
+                exploitation_score = self.wins / self.visits
+                exploration_score = exploration_constant * math.sqrt(math.log(self.parent.visits) / self.visits)
+                position_score = self.nn_evaluation if color == Goban.Board._BLACK else (1 - self.nn_evaluation)
+
+                # Consider position evaluation in addition to the number of wins and visits
+                return (exploitation_score + exploration_score) * (1 + temperature * position_score)
 
         def backpropagate(self, winner):
             self.visits += 1
@@ -104,6 +110,9 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8):
             futures = [executor.submit(worker, root_node) for _ in range(max_batch_size)]
             for future in futures:
                 future.result()
+    
+    # Gradually decrease temperature over time
+    temperature = max(0.01, temperature * 0.99)
 
     # Use a more sophisticated endgame scoring method
     best_child = max(root_node.children.values(), key=lambda child: child.visits)
