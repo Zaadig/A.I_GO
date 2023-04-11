@@ -24,11 +24,85 @@ class myPlayer(PlayerInterface):
 
     def getPlayerName(self):
         return "Player Ki7iyd chk"
+    
+    def opening1(self):
+        # Play a stone on the third line of the star point, at D4 or E4
+        if self._board[33] == Goban.Board._EMPTY and self._board[34] == Goban.Board._EMPTY:
+            if self._mycolor == Goban.Board._BLACK:
+                return "D4"
+            else:
+                return "E4"
+        return None
+
+    def opening2(self):
+        # Play a stone on the fourth line of the star point, at D5 or E5
+        if self._board[43] == Goban.Board._EMPTY and self._board[44] == Goban.Board._EMPTY:
+            if self._mycolor == Goban.Board._BLACK:
+                return "D5"
+            else:
+                return "E5"
+        return None
+
+    def opening3(self):
+        # Play a stone on the third line of the star point, at C3 or F3
+        if self._board[23] == Goban.Board._EMPTY and self._board[26] == Goban.Board._EMPTY:
+            if self._mycolor== Goban.Board._BLACK:
+                return "C3"
+            else:
+                return "F3"
+        return None
+    
+    def play_big_move(self):
+        # Get the legal moves for the current player
+        legal_moves = [self._board.flat_to_name(m) for m in self._board.legal_moves()]
+
+        # Check if any of the legal moves correspond to a big move
+        big_moves = ['D4', 'D16', 'J4', 'J16']
+        for move in big_moves:
+            if move in legal_moves:
+                print("Playing a big move: ", move)
+                self._board.push(self._board.name_to_flat(move))
+                return move
+
+        # If no big moves are available, return None
+        return None
+
 
     def getPlayerMove(self):
+
+
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return "PASS"
+        
+
+        # Get the legal moves for the current player
+        legal_moves = [self._board.flat_to_name(m) for m in self._board.legal_moves()]
+
+        
+        if self.opening1() in legal_moves:
+            move = self.opening1()
+            print("I am playing an opening move: ", move)
+            self._board.push(self._board.name_to_flat(move))
+            return move
+
+        if self.opening2() in legal_moves:
+            move = self.opening2()
+            print("I am playing an opening move: ", move)
+            self._board.push(self._board.name_to_flat(move))
+            return move
+
+        if self.opening3() in legal_moves:
+            move = self.opening3()
+            print("I am playing an opening move: ", move)
+            self._board.push(self._board.name_to_flat(move))
+            return move
+        
+        # Check if a big move is available
+        big_move = self.play_big_move()
+        if big_move:
+            return big_move
+
 
         # Set the maximum depth for the alpha-beta search
         max_depth = 10
@@ -40,10 +114,6 @@ class myPlayer(PlayerInterface):
         # Set a time limit for the search
         start_time = time.time()
         time_limit = 5
-
-        # Get the legal moves for the current player
-        legal_moves = [self._board.flat_to_name(m) for m in self._board.legal_moves()]
-
 
         # If there is only one legal move, play it
         if len(legal_moves) == 1:
