@@ -34,17 +34,3 @@ def position_predict(black_stones, white_stones):
     tensor = np.expand_dims(tensor, axis=0)
     prediction = model.predict(tensor)
     return prediction[0,0]
-
-
-def predict_all(data):
-    predicted_values = []
-    
-    for i in range(100):
-        predicted_value = position_predict(data[i]["black_stones"], data[i]["white_stones"])
-        true_value = data[i]["black_wins"] / data[i]["rollouts"]
-        
-        prediction = (predicted_value,true_value)
-        predicted_values.append(prediction)
-        print("predicted_value = {} - true_value = {}".format(predicted_value,true_value))
-    
-    return np.array(predicted_values)
