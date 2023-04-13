@@ -8,6 +8,8 @@ Nous avons utilisé une classe Node pour représenter les nœuds de l'arbre de j
 
 Nous avons également utilisé des techniques d'optimisation pour améliorer les performances de notre joueur. En particulier, nous avons utilisé un ThreadPoolExecutor pour paralléliser les simulations de jeu et une fonction is_fully_expanded pour éviter de simuler des parties inutiles.
 
+Nous avons implémenté un joueur alpha-beta pour tester notre joueur qui utilise MCTS.
+
 Nous sommes particulièrement fiers de notre méthode d'évaluation de fin de partie, qui utilise une méthode plus sophistiquée que la simple différence de score pour déterminer le gagnant de la partie.
 
 Enfin, nous avons inclus des commentaires détaillés dans notre code pour faciliter la compréhension et la maintenance à long terme.
