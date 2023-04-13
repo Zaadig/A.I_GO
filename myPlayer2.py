@@ -5,7 +5,6 @@ myPlayer class.
 Right now, this class contains the copy of the randomPlayer. But you have to change this!
 '''
 
-import time
 import Goban 
 from playerInterface import *
 from ImprovedMonteCarlo import monte_carlo_tree_search
@@ -28,16 +27,14 @@ class myPlayer(PlayerInterface):
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return "PASS" 
-        
-        # best_move = monte_carlo_tree_search(self._board,self._mycolor,100)
+
         best_move = monte_carlo_tree_search(self._board, self._mycolor, 3)
         self._board.push(best_move)
         print("I am playing ", self._board.move_to_str(best_move))
         return Goban.Board.flat_to_name(best_move)
        
     def playOpponentMove(self, move):
-        print("Opponent played ", move) # New here
-        # the board needs an internal represetation to push the move.  Not a string
+        print("Opponent played ", move)
         self._board.push(Goban.Board.name_to_flat(move)) 
 
     def newGame(self, color):

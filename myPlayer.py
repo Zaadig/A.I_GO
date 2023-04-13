@@ -23,7 +23,7 @@ class myPlayer(PlayerInterface):
         self._mycolor = None
 
     def getPlayerName(self):
-        return "Player Ki7iyd chk"
+        return "alpha-beta player"
     
     def opening1(self):
         # Play a stone on the third line of the star point, at D4 or E4
@@ -255,9 +255,6 @@ class myPlayer(PlayerInterface):
         evaluation_score = score_diff + legal_moves_diff + liberties_diff
 
         return evaluation_score
-
-
-
 
         
     def playOpponentMove(self, move):
