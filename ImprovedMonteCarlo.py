@@ -95,7 +95,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
     def evaluate_nodes(nodes):
         for node in nodes:
             black_stones, white_stones = get_stones_positions(node.board)
-            node.nn_evaluation = position_predict(black_stones, white_stones)
+            node.nn_evaluation = position_predict(black_stones, white_stones,color)
 
     def worker(root_node):
         node = root_node

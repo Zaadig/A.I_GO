@@ -28,12 +28,12 @@ def raw_to_tensor(black_stones,white_stones):
     return tensor
 
 
-def position_predict(black_stones, white_stones):
+def position_predict(black_stones, white_stones, color):
 
     tensor = raw_to_tensor(black_stones,white_stones)
     tensor = np.expand_dims(tensor, axis=0)
     prediction = model.predict(tensor)
-    return prediction[0,0]
+    return prediction[0,1-color]
 
 
 def predict_all(data):
