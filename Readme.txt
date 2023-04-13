@@ -12,37 +12,20 @@ en entrée les positions des pierres noires et blanches sur le plateau de jeu et
 pour ajuster les scores d'exploration et d'exploitation de chaque nœud.
 
 Nous avons utilisé une classe Node pour représenter les nœuds de l'arbre de jeu. Chaque nœud contient une copie du plateau de jeu actuel, ainsi que des informations
-
 sur les mouvements précédents et les statistiques de jeu associées.
 
 Nous avons également utilisé des techniques d'optimisation pour améliorer les performances de notre joueur. En particulier, nous avons utilisé un ThreadPoolExecutor
-
 pour paralléliser les simulations de jeu et une fonction is_fully_expanded pour éviter de simuler des parties inutiles.
-
-Nous avons implémenté un joueur alpha-beta pour tester notre joueur qui utilise MCTS.
 
 
 # 1.2  l'implémentation de l'algorithme alpha-beta
 
 Nous avons implémenté un joueur alpha-beta pour tester notre joueur qui utilise MCTS.
 
-Nous sommes particulièrement fiers de notre méthode d'évaluation de fin de partie, qui utilise une méthode plus sophistiquée que la simple différence de score pour 
+Nous sommes fiers de notre méthode d'évaluation de fin de partie, qui utilise une méthode plus sophistiquée que la simple différence de score pour 
 déterminer le gagnant de la partie.
 
-Enfin, nous avons inclus des commentaires détaillés dans notre code pour faciliter la compréhension et la maintenance à long terme.
-
-
-# 2. Description de l'implémentation des heuristiques
-
-
-# 2.1 l'heuristique  de joueur MCTS
-
-L'heuristique est une fonction appelée "position_predict" qui prend en entrée un plateau de jeu de Go et renvoie une valeur d'évaluation du plateau.
-
-Cette fonction fait des predictions selon le model que nous avons concu pour le tp_ml_go
-
-
-# 2.2  l'heuristique  de joueur alpha_beta
+# 1.2.1  l'implémentation de l'heuristique
 
 L'heuristique est une fonction appelée "ImprovedEvaluation" qui prend en entrée un plateau de jeu de Go et renvoie une valeur d'évaluation du plateau.
 
