@@ -1,11 +1,10 @@
-import keras
+import numpy as np
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Activation, Flatten
+from keras.layers import Dense, Dropout,Flatten
 from keras.layers import Conv2D, BatchNormalization,LeakyReLU
 from keras.callbacks import Callback
 from keras.callbacks import EarlyStopping
 from keras import metrics
-from keras.optimizers import Adam
 import keras.optimizers as optimizers
 import gzip, os
 import json
@@ -13,9 +12,9 @@ import pickle
 import matplotlib.pyplot as plt
 from sklearn.model_selection import train_test_split
 from sklearn.model_selection import StratifiedShuffleSplit
-import numpy as np
 
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# ------------------------------------------------------ INITIAL DATA ------------------------------------------------------------------------------------------------------
 
 
 def get_raw_data_go():
@@ -35,23 +34,14 @@ def get_raw_data_go():
 
 data = get_raw_data_go()
 
-plt.title("Relationship between the depth of the board and the chance for black to win")
-plt.plot([sample["black_wins"] for sample in data],[sample["depth"] for sample in data], '.')
-plt.xlabel("black wins (percentage)")
-plt.ylabel("depth of the game")
 
-# Cumulative Distribution function of the chance of black to win
-cdf_wins = sorted([sample["black_wins"] for sample in data])
-plt.figure()
-plt.plot([x/len(cdf_wins) for x in range(len(cdf_wins))], cdf_wins)
-plt.title("Cumulative Distribution function of the chance of black to win")
-plt.xlabel("\% of the samples with a chance of black to win below y")
-plt.ylabel("Chance of black to win")
-
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
+# ----------------------------------------------------DATA PREPARATION------------------------------------------------------------------------------------------------------
 
 board_size = 9
 
+
+# This function takes a string that represents a position on a Go board, such as "A1" or "J9",
+#  and converts it to a tuple of coordinates in the form (column, row).
 def name_to_coord(s):
     assert s != "PASS"
     indexLetters = {'A':0, 'B':1, 'C':2, 'D':3, 'E':4, 'F':5, 'G':6, 'H':7, 'J':8}
@@ -60,6 +50,10 @@ def name_to_coord(s):
     lin = int(s[1:]) - 1
     return col, lin
 
+
+# This function takes lists of black and white stones on a Go board, and returns a tensor that represents the state of the board. 
+# The tensor is a 3D NumPy array with shape (2, 9, 9), 
+# where the first dimension represents black and white stones, and the second and third dimensions represent the rows and columns of the board
 def raw_to_tensor(black_stones,white_stones):
     tensor = np.zeros((2,board_size,board_size))
     for i in range(len(black_stones)):
@@ -75,57 +69,62 @@ def raw_to_tensor(black_stones,white_stones):
     return tensor
 
 
+# This function takes a tensor that represents a set of Go board states and applies symmetries to it in order to increase the size of the dataset. 
+# The symmetries include rotations and flips of the board, as well as rotations and flips of the colors (i.e. swapping black and white). 
+# The resulting tensor has shape (8 * original_size, 2, 11, 11), .
+def expand_dataset(data_tensor):
+
+    # Get the size of the original dataset
+    size = data_tensor.shape[0]
+
+    # Create a new tensor to hold the expanded dataset
+    expanded_data_tensor = np.zeros((size*8, 2, board_size+2, board_size+2))
+
+    # Copy the original data to the expanded tensor
+    expanded_data_tensor[0:size] = data_tensor
+
+    # Apply the symmetries
+    for rot in range(1, 4):
+        for idx in range(size):
+            expanded_data_tensor[rot*size + idx, 0] = np.rot90(expanded_data_tensor[(rot-1)*size + idx, 0])
+            expanded_data_tensor[rot*size + idx, 1] = np.rot90(expanded_data_tensor[(rot-1)*size + idx, 1])
+
+    for mirror in range(4, 8):
+        for idx in range(size):
+            expanded_data_tensor[mirror*size + idx, 0] = np.flipud(expanded_data_tensor[(mirror-4) * size + idx, 0])
+            expanded_data_tensor[mirror*size + idx, 1] = np.flipud(expanded_data_tensor[(mirror-4) * size + idx, 1])
+
+    return expanded_data_tensor
+
+
 filename = 'dataset.npy'
 
 if os.path.isfile(filename):
+    # Load the dataset from the file
     data_tensor,y = pickle.load(open(filename, 'rb'))
 else :
-   
-
+    # Create a tensor to hold the dataset
     data_tensor = np.zeros((len(data), 2, board_size+2, board_size+2))
     for i in range(len(data)):
         black_stones = data[i]['black_stones']
         white_stones = data[i]['white_stones']
         data_tensor[i] = raw_to_tensor(black_stones, white_stones)
 
-    print("data size before expansion:",data_tensor.shape)
+        print("data size before expansion:",data_tensor.shape)
 
 
-    def expand_dataset(data_tensor):
-        # Get the size of the original dataset
-        size = data_tensor.shape[0]
+        data_tensor = expand_dataset(data_tensor)
 
-        # Create a new tensor to hold the expanded dataset
-        expanded_data_tensor = np.zeros((size*8, 2, board_size+2, board_size+2))
-
-        # Copy the original data to the expanded tensor
-        expanded_data_tensor[0:size] = data_tensor
-
-        # Apply the symmetries
-        for rot in range(1, 4):
-            for idx in range(size):
-                expanded_data_tensor[rot*size + idx, 0] = np.rot90(expanded_data_tensor[(rot-1)*size + idx, 0])
-                expanded_data_tensor[rot*size + idx, 1] = np.rot90(expanded_data_tensor[(rot-1)*size + idx, 1])
-
-        for mirror in range(4, 8):
-            for idx in range(size):
-                expanded_data_tensor[mirror*size + idx, 0] = np.flipud(expanded_data_tensor[(mirror-4) * size + idx, 0])
-                expanded_data_tensor[mirror*size + idx, 1] = np.flipud(expanded_data_tensor[(mirror-4) * size + idx, 1])
-
-        return expanded_data_tensor
+        y = np.array([(data[i]["black_wins"]/data[i]["rollouts"], data[i]["white_wins"]/data[i]["rollouts"]) for i in range(len(data))])
+        y = np.concatenate((y, y, y, y, y, y, y, y))
 
 
-    data_tensor = expand_dataset(data_tensor)
+        # Save the dataset to a file
+        pickle.dump((data_tensor, y), open(filename, 'wb'))
 
-    y = np.array([(data[i]["black_wins"]/data[i]["rollouts"], data[i]["white_wins"]/data[i]["rollouts"]) for i in range(len(data))])
-    # y = np.repeat(y, 8, axis=0)
-    y = np.concatenate((y, y, y, y, y, y, y, y))
+        print("data size after expansion:",data_tensor.shape)
 
-    pickle.dump((data_tensor, y), open(filename, 'wb'))
-    
-    print("data size after expansion:",data_tensor.shape)
-
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
+# --------------------------------------------------- DIVIDING DATA into training,validation and test data -----------------------------------------------------------------------------------------------------------
 
 
 # create an array of labels based on the proportion of black and white wins
@@ -148,12 +147,14 @@ for val_index, holdout_index in sss2.split(X_test, np.argmax(y_test, axis=1)):
     y_val, y_holdout = y_test[val_index], y_test[holdout_index]
 
 
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
+# ---------------------------------------------------- MODEL -------------------------------------------------------------------------------------------------------
 
 
 
+# Define the model architecture
 model = Sequential()
 
+# Add convolutional layers with activation functions and regularization
 model.add(Conv2D(filters=64, kernel_size=(3, 3), padding='same', input_shape=(2, board_size+2, board_size+2)))
 model.add(LeakyReLU(alpha=0.1))
 model.add(BatchNormalization())
@@ -164,6 +165,7 @@ model.add(LeakyReLU(alpha=0.1))
 model.add(BatchNormalization())
 model.add(Dropout(0.5))
 
+# Flatten the output of the convolutional layers and add dense layers with activation functions and regularization
 model.add(Flatten())
 model.add(Dense(64))
 model.add(LeakyReLU(alpha=0.1))
@@ -173,35 +175,45 @@ model.add(Dense(32))
 model.add(LeakyReLU(alpha=0.1))
 model.add(Dropout(0.5))
 
+# Output layer with softmax activation for binary classification
 model.add(Dense(2, activation='softmax'))
 
+# Compile the model with a binary crossentropy loss and the Adam optimizer, and add evaluation metrics
 model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', metrics.mean_absolute_error, metrics.mean_squared_error])
 
+# Define a custom callback to track training history
 class History(Callback):
-    
     def __init__(self):
-        self.history = {}    
-    def on_epoch_end(self, epoch, logs={}):       
+        self.history = {}
+    
+    def on_epoch_end(self, epoch, logs={}):
+        # Add the current epoch's metrics to the history dictionary
         for k,v in logs.items():
             if not k in self.history: self.history[k]=[]
             self.history[k].append(v)
         print(".",end="")
+
+# Initialize the custom callback and add it to the list of callbacks
 history=[History()]
 
-# Add early stopping callback
+# Add early stopping callback to prevent overfitting
 early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1, mode='auto', restore_best_weights=True)
 
+# Train the model with the training data and validation data, using the custom callback and early stopping
 model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=20, batch_size=64, callbacks=[history, early_stopping])
 
+# Print the model summary
 model.summary()
 
+# Evaluate the model on the test data and print the evaluation metrics
 score = model.evaluate(X_test, y_test, verbose=0)
-print('Test loss:', score)
 
-model.save('my_first_model.h5')
+# Save the model to a file
+model.save('my_model.h5')
 
 
-# --------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+# ------------------------------------------------------------------ END -----------------------------------------------------------------------------------------
 
 
 

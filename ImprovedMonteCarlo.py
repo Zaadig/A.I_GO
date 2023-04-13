@@ -1,11 +1,12 @@
 import math
-import numpy as np
 import Goban
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 import time
 from random import choice
 from Predictor import position_predict
+
+#------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def get_stones_positions(board):
         black_stones = []
@@ -18,7 +19,11 @@ def get_stones_positions(board):
                 white_stones.append(Goban.Board.flat_to_name(i))
         return black_stones, white_stones
 
+
+
 def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperature=1):
+
+    # Simulates a game until the end and returns the winner
     def simulate_game(board):
         board_cpy = deepcopy(board)
         while not board_cpy.is_game_over():
@@ -32,6 +37,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
         else:
             return Goban.Board._EMPTY
 
+    # Define the Node class, which represents a node in the MCTS tree
     class Node:
         def __init__(self, board, parent=None, move=None):
             self.board = deepcopy(board)
@@ -42,9 +48,11 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             self.children = {}
             self.nn_evaluation = 0.5
 
+        # Check if all possible moves from this node have been explored
         def is_fully_expanded(self):
             return len(self.children) == len(self.board.legal_moves())
 
+        # Select the child node with the highest PUCT score
         def select_child(self):
             unexplored_moves = [move for move in self.board.legal_moves() if move not in self.children]
             if unexplored_moves:
@@ -52,6 +60,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             else:
                 return max(self.children.values(), key=lambda child: child.get_puct_score())
 
+        # Expand the current node by adding a new child node for the given move
         def expand(self, move):
             if self.board.is_game_over():
                 return self  # return the current node without expanding
@@ -60,7 +69,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             new_node = Node(new_board, parent=self, move=move)
             self.children[move] = new_node
             return new_node
-
+        # Calculate the PUCT score for the current node
         def get_puct_score(self):
             if self.visits == 0:
                 return float('inf')
@@ -74,6 +83,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
                 # Consider position evaluation in addition to the number of wins and visits
                 return (exploitation_score + exploration_score) * (1 + temperature * position_score)
 
+        # Backpropagate the result of the simulation to the parent nodes
         def backpropagate(self, winner):
             self.visits += 1
             if winner == color:
@@ -81,6 +91,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             if self.parent:
                 self.parent.backpropagate(winner)
 
+    # Evaluate the position of the nodes in the given list using a neural network
     def evaluate_nodes(nodes):
         for node in nodes:
             black_stones, white_stones = get_stones_positions(node.board)
