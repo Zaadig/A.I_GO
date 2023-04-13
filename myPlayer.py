@@ -23,7 +23,7 @@ class myPlayer(PlayerInterface):
         self._mycolor = None
 
     def getPlayerName(self):
-        return "alpha-beta player"
+        return "Killer alpha-beta player"
     
     def opening1(self):
         # Play a stone on the third line of the star point, at D4 or E4
@@ -113,7 +113,7 @@ class myPlayer(PlayerInterface):
 
         # Set a time limit for the search
         start_time = time.time()
-        time_limit = 5
+        time_limit = 10
 
         # If there is only one legal move, play it
         if len(legal_moves) == 1:
@@ -156,7 +156,7 @@ class myPlayer(PlayerInterface):
     
     def minimax(self, board, depth, alpha, beta, is_maximizing_player, start_time, time_limit):
         if depth == 0 or board.is_game_over():
-            return self.evaluate(board)
+            return self.ImprovedEvaluation(board)
 
         if is_maximizing_player:
             max_score = float('-inf')
@@ -191,37 +191,15 @@ class myPlayer(PlayerInterface):
 
         for i in range(board._BOARDSIZE):
             for j in range(board._BOARDSIZE):
-                coord = board.flatten((i, j))
+                coord = Goban.Board.flatten((i, j))
                 if coord not in visited and board._board[coord] == color:
-                    group, group_liberties = self.get_group_and_liberties(board, coord)
+                    group, group_liberties = self.get_group_and_liberties(board, (i,j))
                     visited.update(group)
-                    liberties += group_liberties
+                    liberties += len(group_liberties)
 
         return liberties
-
-    def get_group_and_liberties(self, board, coord):
-        group = set([coord])
-        liberties = set()
-        stack = [coord]
-        color = board._board[coord]
-
-        while stack:
-            current = stack.pop()
-            for neighbor in board._get_neighbors(current):
-                if board._board[neighbor] == color and neighbor not in group:
-                    group.add(neighbor)
-                    stack.append(neighbor)
-                elif board._board[neighbor] == Goban.Board._EMPTY:
-                    liberties.add(neighbor)
-
-        return group, len(liberties)
-
-    def evaluate(self, board):
-        '''
-        Returns a score representing how advantageous the current board configuration is for the player
-        with the given color. A positive score indicates an advantage for the player, and a negative score
-        indicates a disadvantage.
-        '''
+  
+    def ImprovedEvaluation(self,board):
         if board.is_game_over():
             winner = board.result()
             if winner == self._mycolor:
@@ -231,30 +209,116 @@ class myPlayer(PlayerInterface):
             else:
                 return 0
 
-        # Calculate the scores
         scores = (self._board._nbBLACK, self._board._nbWHITE)
+        score_diff = scores[self._mycolor - 1] - scores[Goban.Board.flip(self._mycolor) - 1]
 
-        # Calculate the number of legal moves for both players
         legal_moves_count = len(board.legal_moves())
-
-        # Create a temporary copy of the board to switch perspectives
         temp_board = deepcopy(board)
-
-        # Switch to the opponent's perspective and calculate the number of legal moves
-        temp_board.play_move(-1)  # Pass move for the current player
+        temp_board.play_move(-1)
         opponent_legal_moves_count = len(temp_board.legal_moves())
+        legal_moves_diff = legal_moves_count - opponent_legal_moves_count
 
-        # Calculate the number of liberties for both players
         my_liberties = self.liberties(board, self._mycolor)
         opponent_liberties = self.liberties(board, Goban.Board.flip(self._mycolor))
-
-        # Calculate the evaluation score
-        score_diff = scores[self._mycolor - 1] - scores[Goban.Board.flip(self._mycolor) - 1]
-        legal_moves_diff = legal_moves_count - opponent_legal_moves_count
         liberties_diff = my_liberties - opponent_liberties
-        evaluation_score = score_diff + legal_moves_diff + liberties_diff
+
+        my_groups = self.get_groups(board, self._mycolor)
+        my_group_liberties = [len(liberties) for group, liberties in my_groups]
+        opponent_groups = self.get_groups(board, Goban.Board.flip(self._mycolor))
+        opponent_group_liberties = [len(liberties) for group, liberties in opponent_groups]
+
+
+        groups_diff = len(my_groups) - len(opponent_groups)
+        group_liberties_diff = sum(my_group_liberties) - sum(opponent_group_liberties)
+
+        my_influence = self.calculate_influence(board, self._mycolor)
+        opponent_influence = self.calculate_influence(board, Goban.Board.flip(self._mycolor))
+        influence_diff = my_influence - opponent_influence
+
+        if self._mycolor == Goban.Board._WHITE:
+            captured_diff = board._capturedWHITE - board._capturedBLACK
+        else:
+            captured_diff = board._capturedBLACK - board._capturedWHITE
+
+
+        # Assign weights to the different factors
+        w_score = 10
+        w_legal_moves = 3
+        w_liberties = 1
+        w_groups = 2
+        w_group_liberties = 5
+        w_influence = 4
+        w_captured = 2
+
+        evaluation_score = (
+            w_score * score_diff +
+            w_legal_moves * legal_moves_diff +
+            w_liberties * liberties_diff +
+            w_groups * groups_diff +
+            w_group_liberties * group_liberties_diff +
+            w_influence * influence_diff +
+            w_captured * captured_diff
+        )
 
         return evaluation_score
+
+    def calculate_influence(self, board, color):
+        influence_board = [[0] * board._BOARDSIZE for _ in range(board._BOARDSIZE)]
+
+        for x in range(board._BOARDSIZE):
+            for y in range(board._BOARDSIZE):
+                pos = (x, y)
+                fpos = Goban.Board.flatten(pos)  # Convert 2D coordinates to 1D
+                if board.__getitem__(fpos) == color:
+                    for nx in range(board._BOARDSIZE):
+                        for ny in range(board._BOARDSIZE):
+                            dist = abs(nx - x) + abs(ny - y)
+                            influence_board[nx][ny] += 1 / (dist + 1)
+
+        total_influence = sum(sum(row) for row in influence_board)
+        return total_influence
+
+
+    def get_groups(self, board, color):
+        visited = set()
+        groups = []
+
+        for x in range(board._BOARDSIZE):
+            for y in range(board._BOARDSIZE):
+                pos = (x, y)
+                fpos = Goban.Board.flatten(pos)  # Convert 2D coordinates to 1D
+                if pos not in visited and board.__getitem__(fpos) == color:
+                    group, liberties = self.get_group_and_liberties(board, pos)
+                    groups.append((group, liberties))
+                    visited.update(group)
+
+        return groups
+
+
+    def get_group_and_liberties(self, board, pos):
+        group = set()
+        liberties = set()
+        stack = [pos]
+        fpos = Goban.Board.flatten(pos)  # Convert 2D coordinates to 1D
+        color = board.__getitem__(fpos)  # Access _board using 1D coordinates
+
+        while stack:
+            x, y = stack.pop()
+            group.add((x, y))
+
+            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < board._BOARDSIZE and 0 <= ny < board._BOARDSIZE:
+                    npos = (nx, ny)
+                    fnpos = Goban.Board.flatten(npos)  # Convert 2D coordinates to 1D
+                    if board.__getitem__(fnpos) == color and npos not in group:
+                        stack.append(npos)
+                    elif board.__getitem__(fnpos) == Goban.Board._EMPTY:
+                        liberties.add(npos)
+
+        return group, liberties
+
+
 
         
     def playOpponentMove(self, move):
