@@ -3,3 +3,10 @@ matplotlib
 keras
 sklearn
 tensorflow
+requests
+zipfile
+tarfile
+tempfile
+os
+re
+pickle
