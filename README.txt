@@ -1,91 +1,60 @@
-Goban.py 
----------
+-------------------------------------------------------------
 
-Fichier contenant les règles du jeu de GO avec les fonctions et méthodes pour parcourir (relativement) efficacement
-l'arbre de jeu, à l'aide de legal_moves() et push()/pop() comme vu en cours.
+Team :  Mohammed Seddiq ELALAOUI - Atman BOZ   --  G2
 
-Ce fichier sera utilisé comme arbitre dans le tournoi. Vous avez maintenant les fonctions de score implantés dedans.
-Sauf problème, ce sera la methode result() qui donnera la vainqueur quand is_game_over() sera Vrai.
-
-Vous avez un décompte plus précis de la victoire dans final_go_score()
-
-Pour vous aider à parcourir le plateau de jeu, si b est un Board(), vous pouvez avoir accès à la couleur de la pierre
-posée en (x,y) en utilisant b[Board.flatten((x,y))]
+-------------------------------------------------------------
 
 
-GnuGo.py
---------
 
-Fichier contenant un ensemble de fonctions pour communiquer avec gnugo. Attention, il faut installer correctement (et
-à part gnugo sur votre machine).  Je l'ai testé sur Linux uniquement mais cela doit fonctionner avec tous les autres
-systèmes (même s'ils sont moins bons :)).
+# 1. Joueur officiel ( myPlayer.py )
 
-
-starter-go.py
--------------
-
-Exemples de deux développements aléatoires (utilisant legal_moves et push/pop). Le premier utilise legal_moves et le
-second weak_legal_moves, qui ne garanti plus que le coup aléatoire soit vraiment légal (à cause des Ko).
-
-La première chose à faire est probablement de 
+Il s'agit du joueur fourni dans myPlayer.py. Ce programme concerne un joueur de Go qui utilise un réseau neuronal pour prédire le meilleur coup à jouer. 
+Le réseau neuronal a été entraîné en combinant trois ensembles de données distincts. Pour importer et traiter les données, exécutez le script ImportAndExtract.py. 
+Ce script générera l'ensembles des données d'entraînement, de validation et de test traités à l'aide de pickle. Ensuite, le fichier opNeuralNetwork.py utilisera 
+ces données pour créer le modèle my_op_model.h5.
 
 
-localGame.py
-------------
-
-Permet de lancer un match de myPlayer contre lui même, en vérifiant les coups avec une instanciation de Goban.py comme
-arbitre. Vous ne devez pas modifier ce fichier pour qu'il fonctionne, sans quoi je risque d'avoir des problèmes pour
-faire entrer votre IA dans le tournoi.
+# 2. Joueur MCTS ( MonteCarloPlayer.py )
 
 
-playerInterface.py
-------------------
+Nous avons implémenté l'algorithme Monte Carlo Tree Search (MCTS), qui est une technique populaire pour jouer au Go. Cette méthode est très efficace pour explorer 
+de grandes profondeurs d'arbre de jeu et pour estimer les chances de victoire de chaque joueur à chaque étape.
 
-Classe abstraite, décrite dans le sujet, permettant à votre joueur d'implanter correctement les fonctions pour être
-utilisé dans localGame et donc, dans le tournoi. Attention, il faut bien faire attention aux coups internes dans Goban
-(appelés "flat") et qui sont utilisés dans legal_moves/weak_legal_moves et push/pop des coups externes qui sont
-utilisés dans l'interface (les named moves). En interne, un coup est un indice dans un tableau 1 dimension
--1, 0.._BOARDSIZE^2 et en externe (dans cette interface) les coups sont des chaines de caractères dans "A1", ..., "J9",
-"PASS". Il ne faut pas se mélanger les pinceaux.
+Nous avons également utilisé une fonction de prédiction de position (position_predict) pour améliorer l'évaluation des nœuds de l'arbre de jeu. Cette fonction utilise
+notre  model d'aprentissage conçu pour le tp ML_GO pour renvoyer une évaluation de la position actuelle du jeu. Cette évaluation est utilisée 
+pour ajuster les scores d'exploration et d'exploitation de chaque nœud.
 
+Nous avons utilisé une classe Node pour représenter les nœuds de l'arbre de jeu. Chaque nœud contient une copie du plateau de jeu actuel, ainsi que des informations
+sur les mouvements précédents et les statistiques de jeu associées.
 
-myPlayer.py
------------
-
-Fichier que vous devrez modifier pour y mettre votre IA pour le tournoi. En l'état actuel, il contient la copie du
-joueur randomPlayer.py
+Nous avons également utilisé des techniques d'optimisation pour améliorer les performances de notre joueur. En particulier, nous avons utilisé un ThreadPoolExecutor
+pour paralléliser les simulations de jeu et une fonction is_fully_expanded pour éviter de simuler des parties inutiles.
 
 
-randomPlayer.py
----------------
+# 3.  Joueur alpha-beta ( AlphaBetaPlayer.py )
 
-Un joueur aléatoire que vous pourrez conserver tel quel
+L'heuristique dans cette implémentation calcule plusieurs caractéristiques du plateau et leur attribue des poids différents pour obtenir une évaluation globale.
+
+Les caractéristiques prises en compte sont :
+
+    * La différence de score entre les joueurs.
+    * La différence entre le nombre de mouvements légaux du joueur actuel et de son adversaire.
+    * La différence entre le nombre de libertés des groupes de pierres du joueur actuel et de son adversaire.
+    * La différence entre le nombre de groupes de pierres du joueur actuel et de son adversaire.
+    * La différence entre le nombre total de libertés des groupes de pierres du joueur actuel et de son adversaire.
+    * La différence entre la "influence" du joueur actuel et de son adversaire. La "influence" est une mesure de la force relative de chaque joueur sur le plateau.
+    * La différence entre le nombre de pierres capturées par le joueur actuel et par son adversaire.
+
+Ces caractéristiques sont pondérées différemment, avec des poids qui peuvent être ajustés pour obtenir une évaluation plus fine et plus précise.
+
+l'heuristique est conçue de manière à minimiser les mouvements risqués et à favoriser les mouvements qui sont plus susceptibles de conduire à la victoire. 
+Par exemple, elle accorde une importance plus élevée aux groupes ayant plus de libertés, car cela signifie qu'ils sont plus difficiles à capturer. De même, 
+elle prend en compte l'influence des pierres sur le plateau, car cela peut affecter la façon dont les groupes se développent.
 
 
-gnugoPlayer.py
---------------
-
-Un joueur basé sur gnugo. Vous permet de vous mesurer à lui simplement.
+# 4. Après avoir organisé plusieurs matchs entre nos différents joueurs, nous avons constaté que le premier joueur était le meilleur, pour cela , il est élu 
+pour participer au tournoi ;/
 
 
-namedGame.py
-------------
-
-Permet de lancer deux joueurs différents l'un contre l'autre.
-Il attent en argument les deux modules des deux joueurs à importer.
-
-
-EXEMPLES DE LIGNES DE COMMANDES:
-================================
-
-python3 localGame.py
---> Va lancer un match myPlayer.py contre myPlayer.py
-
-python3 namedGame.py myPlayer randomPlayer
---> Va lancer un match entre votre joueur (NOIRS) et le randomPlayer
- (BLANC)
-
- python3 namedGame gnugoPlayer myPlayer
- --> gnugo (level 0) contre votre joueur (très dur à battre)
 
 
