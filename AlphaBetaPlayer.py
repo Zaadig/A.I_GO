@@ -23,7 +23,7 @@ class myPlayer(PlayerInterface):
         self._mycolor = None
 
     def getPlayerName(self):
-        return "alpha-beta player"
+        return "simo6"
     
     def opening1(self):
         # Play a stone on the third line of the star point, at D4 or E4
