@@ -1,6 +1,6 @@
 -------------------------------------------------------------
 
-Team :  Mohammed Seddiq ELALAOUI - Atman BOZ   --  G2
+Team :  Mohamed Seddiq ELALAOUI - Atman BOZ   --  G2
 
 -------------------------------------------------------------
 
