@@ -6,13 +6,15 @@ Team :  Mohammed Seddiq ELALAOUI - Atman BOZ   --  G2
 
 
 
-# 1. Joueur officiel
-Il s'agit du joueur fourni dans myPlayer.py. Ce programme concerne un joueur de Go qui utilise un réseau neuronal pour prédire le meilleur coup à jouer. Le réseau neuronal 
-a été entraîné en combinant trois ensembles de données distincts. Pour importer et traiter les données, exécutez le script ImportAndExtract.py. Ce script générera les 
-ensembles de données d'entraînement, de validation et de test traités à l'aide de pickle. Ensuite, le fichier opNeuralNetwork.py utilisera ces ensembles pour créer le modèle.
+# 1. Joueur officiel ( myPlayer.py )
+
+Il s'agit du joueur fourni dans myPlayer.py. Ce programme concerne un joueur de Go qui utilise un réseau neuronal pour prédire le meilleur coup à jouer. 
+Le réseau neuronal a été entraîné en combinant trois ensembles de données distincts. Pour importer et traiter les données, exécutez le script ImportAndExtract.py. 
+Ce script générera l'ensembles des données d'entraînement, de validation et de test traités à l'aide de pickle. Ensuite, le fichier opNeuralNetwork.py utilisera 
+ces données pour créer le modèle my_op_model.h5.
 
 
-# 2. Joueur MCTS
+# 2. Joueur MCTS ( MonteCarloPlayer.py )
 
 
 Nous avons implémenté l'algorithme Monte Carlo Tree Search (MCTS), qui est une technique populaire pour jouer au Go. Cette méthode est très efficace pour explorer 
@@ -29,13 +31,9 @@ Nous avons également utilisé des techniques d'optimisation pour améliorer les
 pour paralléliser les simulations de jeu et une fonction is_fully_expanded pour éviter de simuler des parties inutiles.
 
 
-# 3.  Joueur alpha-beta
+# 3.  Joueur alpha-beta ( AlphaBetaPlayer.py )
 
-Nous avons implémenté un joueur alpha-beta pour tester nos autres joueurs.
-
-# 3.1.  l'heuristique :
-
-L'heuristique calcule plusieurs caractéristiques du plateau et leur attribue des poids différents pour obtenir une évaluation globale.
+L'heuristique dans cette implémentation calcule plusieurs caractéristiques du plateau et leur attribue des poids différents pour obtenir une évaluation globale.
 
 Les caractéristiques prises en compte sont :
 
@@ -52,5 +50,11 @@ Ces caractéristiques sont pondérées différemment, avec des poids qui peuvent
 l'heuristique est conçue de manière à minimiser les mouvements risqués et à favoriser les mouvements qui sont plus susceptibles de conduire à la victoire. 
 Par exemple, elle accorde une importance plus élevée aux groupes ayant plus de libertés, car cela signifie qu'ils sont plus difficiles à capturer. De même, 
 elle prend en compte l'influence des pierres sur le plateau, car cela peut affecter la façon dont les groupes se développent.
+
+
+# 4. Après avoir organisé plusieurs matchs entre nos différents joueurs, nous avons constaté que le premier joueur était le meilleur, pour cela , il est élu 
+pour participer au tournoi ;/
+
+
 
 
