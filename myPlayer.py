@@ -11,7 +11,7 @@ class myPlayer(PlayerInterface):
         self.model = load_model('my_op_model.h5') # Model trained on pro games, it tries to directly predict the best move
 
     def getPlayerName(self):
-        return "Simo6"
+        return "Moulhanout"
 
     def get_state_for_nn(self, board): # Used to prepare board state for neural network
         state = np.zeros((board._BOARDSIZE, board._BOARDSIZE, 3), dtype=np.int8)
