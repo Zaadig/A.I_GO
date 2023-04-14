@@ -9,19 +9,20 @@ from Predictor import position_predict
 #------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 def get_stones_positions(board):
-        black_stones = []
-        white_stones = []
-        flattened_board = board.get_board()
-        for i in range(len(flattened_board)):
-            if flattened_board[i] == 1:
-                black_stones.append(Goban.Board.flat_to_name(i))
-            elif flattened_board[i] == 2:
-                white_stones.append(Goban.Board.flat_to_name(i))
-        return black_stones, white_stones
+    black_stones = []
+    white_stones = []
+    flattened_board = board.get_board()
+    for i in range(len(flattened_board)):
+        if flattened_board[i] == 1:
+            black_stones.append(Goban.Board.flat_to_name(i))
+        elif flattened_board[i] == 2:
+            white_stones.append(Goban.Board.flat_to_name(i))
+    return black_stones, white_stones
 
 
 
 def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperature=1):
+    time_limit -= 5  # Subtract extra seconds for overhead
 
     # Simulates a game until the end and returns the winner
     def simulate_game(board):
@@ -37,7 +38,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
         else:
             return Goban.Board._EMPTY
 
-    # Define the Node class, which represents a node in the MCTS tree
+    # Defining the Node class, which represents a node in the MCTS tree
     class Node:
         def __init__(self, board, parent=None, move=None):
             self.board = deepcopy(board)
@@ -48,11 +49,11 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             self.children = {}
             self.nn_evaluation = 0.5
 
-        # Check if all possible moves from this node have been explored
+        # Checking if all possible moves from this node have been explored
         def is_fully_expanded(self):
             return len(self.children) == len(self.board.legal_moves())
 
-        # Select the child node with the highest PUCT score
+        # Here we're selecting the child node with the highest PUCT score
         def select_child(self):
             unexplored_moves = [move for move in self.board.legal_moves() if move not in self.children]
             if unexplored_moves:
@@ -60,7 +61,7 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             else:
                 return max(self.children.values(), key=lambda child: child.get_puct_score())
 
-        # Expand the current node by adding a new child node for the given move
+        # function used to expand the current node by adding a new child node for the given move
         def expand(self, move):
             if self.board.is_game_over():
                 return self  # return the current node without expanding
@@ -69,18 +70,18 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
             new_node = Node(new_board, parent=self, move=move)
             self.children[move] = new_node
             return new_node
-        # Calculate the PUCT score for the current node
+        # Function used to calculate the PUCT score for the current node
         def get_puct_score(self):
             if self.visits == 0:
                 return float('inf')
             else:
-                # Use temperature to control exploration
+                # Temperature is used to control exploration
                 exploration_constant = 1 / math.sqrt(2)
                 exploitation_score = self.wins / self.visits
                 exploration_score = exploration_constant * math.sqrt(math.log(self.parent.visits) / self.visits)
                 position_score = self.nn_evaluation if color == Goban.Board._BLACK else (1 - self.nn_evaluation)
 
-                # Consider position evaluation in addition to the number of wins and visits
+                # Considering position evaluation in addition to the number of wins and visits
                 return (exploitation_score + exploration_score) * (1 + temperature * position_score)
 
         # Backpropagate the result of the simulation to the parent nodes
@@ -125,6 +126,5 @@ def monte_carlo_tree_search(board, color, time_limit, max_batch_size=8, temperat
     # Gradually decrease temperature over time
     temperature = max(0.01, temperature * 0.99)
 
-    # Use a more sophisticated endgame scoring method
     best_child = max(root_node.children.values(), key=lambda child: child.visits)
     return best_child.move

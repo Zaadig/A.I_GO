@@ -64,8 +64,7 @@ def raw_to_tensor(black_stones,white_stones):
         x,y = name_to_coord(white_stones[i])[0],name_to_coord(white_stones[i])[1]
         tensor[x,y,1] = 1
 
-    # Add padding to the tensor
-    tensor = np.pad(tensor, pad_width=((1,1),(1,1),(0,0)), mode='constant')
+    tensor = np.pad(tensor, pad_width=((1,1),(1,1),(0,0)), mode='constant') # Add padding to the tensor
     return tensor
 
 
@@ -73,16 +72,14 @@ def raw_to_tensor(black_stones,white_stones):
 # The symmetries include rotations and flips of the board, as well as rotations and flips of the colors (i.e. swapping black and white). 
 # The resulting tensor has shape (8 * original_size, 2, 11, 11), .
 def expand_dataset(data_tensor):
-    # Get the size of the original dataset
-    size = data_tensor.shape[0]
 
-    # Create a new tensor to hold the expanded dataset
-    expanded_data_tensor = np.zeros((size*8, board_size+2, board_size+2, 2))
+    size = data_tensor.shape[0]   # Get the size of the original dataset
 
-    # Copy the original data to the expanded tensor
-    expanded_data_tensor[0:size] = data_tensor
+    expanded_data_tensor = np.zeros((size*8, board_size+2, board_size+2, 2)) # Create a new tensor to hold the expanded dataset
 
-    # Apply the symmetries
+    expanded_data_tensor[0:size] = data_tensor # Copy the original data to the expanded tensor
+
+    # This is where the data is expanded using symmetries
     for rot in range(1, 4):
         for idx in range(size):
             expanded_data_tensor[rot*size + idx, :, :, 0] = np.rot90(expanded_data_tensor[(rot-1)*size + idx, :, :, 0])
@@ -141,7 +138,6 @@ for val_index, holdout_index in sss2.split(X_test, np.argmax(y_test, axis=1)):
 
 
 
-# Define the model architecture
 model = Sequential()
 
 model.add(Conv2D(filters=64, kernel_size=(3, 3), activation='relu', padding='same', input_shape=(board_size+2, board_size+2, 2)))
@@ -165,20 +161,15 @@ class History(Callback):
             self.history[k].append(v)
         print(".",end="")
 
-# Initialize the custom callback and add it to the list of callbacks
 history=[History()]
 
-# Train the model with the training data and validation data, using the custom callback and early stopping
 model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=30, batch_size=64, callbacks=history)
 
-# Print the model summary
 model.summary()
 
-# Evaluate the model on the test data and print the evaluation metrics
 score = model.evaluate(X_test, y_test, verbose=0)
 print('Test loss:', score)
 
-# Save the model to a file
 model.save('my_model.h5')
 
 

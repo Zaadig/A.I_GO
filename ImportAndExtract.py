@@ -1,8 +1,44 @@
+import requests
+import zipfile
+import tarfile
+import tempfile
 import os
+import re
 import numpy as np
+import pickle
 from sgfmill import sgf, boards
 import random
 from sklearn.model_selection import train_test_split
+
+
+def sanitize_filename(filename):
+    return re.sub(r'[<>:"\\/|?*]', '_', filename)
+
+
+def download_and_extract_datasets(dataset_urls):
+    temp_dir = tempfile.mkdtemp()
+
+    for url in dataset_urls:
+        response = requests.get(url, stream=True)
+        file_name = url.split("/")[-1]
+
+        with open(os.path.join(temp_dir, file_name), "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                if chunk:
+                    f.write(chunk)
+
+        if file_name.endswith(".zip"):
+            with zipfile.ZipFile(os.path.join(temp_dir, file_name), "r") as zip_ref:
+                for member in zip_ref.infolist():
+                    member.filename = sanitize_filename(member.filename)
+                    zip_ref.extract(member, temp_dir)
+        elif file_name.endswith(".tgz") or file_name.endswith(".tar.gz"):
+            with tarfile.open(os.path.join(temp_dir, file_name), "r:gz") as tar_ref:
+                for member in tar_ref.getmembers():
+                    member.name = sanitize_filename(member.name)
+                    tar_ref.extract(member, temp_dir)
+
+    return temp_dir
 
 
 def parse_sgf_file(file_path):
@@ -130,7 +166,15 @@ def create_datasets(data_dir, train_ratio=0.8, val_ratio=0.1, random_seed=42):
 
 
 
-data_dir = "GO9"
+dataset_urls = [
+    "https://dl.dropboxusercontent.com/s/ctr1h954vauiej5/go9_20160729_119x200.tgz",
+    "https://dl.dropboxusercontent.com/s/7hzopmr000ndham/go9_20170307_200x200.zip",
+    "https://dl.dropboxusercontent.com/s/abpzmqrw7gyvlzt/go9.tgz"
+]
+
+
+data_dir = download_and_extract_datasets(dataset_urls)
+
 train_set, val_set, test_set = create_datasets(data_dir)
 
 print("Length of train_set:", len(train_set))
@@ -153,8 +197,6 @@ print_sample(random.choice(val_set))
 print("\nSample from test_set:")
 print_sample(random.choice(test_set))
 
-
-import pickle
 
 with open("train_set.pickle", "wb") as f:
     pickle.dump(train_set, f)

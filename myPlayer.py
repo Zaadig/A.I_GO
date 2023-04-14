@@ -1,340 +1,89 @@
-# -*- coding: utf-8 -*-
-''' This is the file you have to modify for the tournament. Your default AI player must be called by this module, in the
-myPlayer class.
-
-Right now, this class contains the copy of the randomPlayer. But you have to change this!
-'''
-
-import time
-import Goban
-from random import choice
-from copy import deepcopy
+import numpy as np
+from keras.models import load_model
 from playerInterface import *
+from Goban import Board
+from random import choice
 
 class myPlayer(PlayerInterface):
-    ''' Example of a random player for the go. The only tricky part is to be able to handle
-    the internal representation of moves given by legal_moves() and used by push() and 
-    to translate them to the GO-move strings "A1", ..., "J8", "PASS". Easy!
-
-    '''
-
     def __init__(self):
-        self._board = Goban.Board()
+        self._board = Board()
         self._mycolor = None
+        self.model = load_model('my_op_model.h5') # Model trained on pro games, it tries to directly predict the best move
 
     def getPlayerName(self):
-        return "Killer alpha-beta player"
+        return "Simo6"
+
+    def get_state_for_nn(self, board): # Used to prepare board state for neural network
+        state = np.zeros((board._BOARDSIZE, board._BOARDSIZE, 3), dtype=np.int8)
+        for i in range(board._BOARDSIZE):
+            for j in range(board._BOARDSIZE):
+                coord = board.flatten((i, j))
+                if board._board[coord] == self._mycolor:
+                    state[i, j, 0] = 1
+                elif board._board[coord] == Board.flip(self._mycolor):
+                    state[i, j, 1] = 1
+                else:
+                    state[i, j, 2] = 1
+        return state
     
-    def opening1(self):
-        # Play a stone on the third line of the star point, at D4 or E4
-        if self._board[33] == Goban.Board._EMPTY and self._board[34] == Goban.Board._EMPTY:
-            if self._mycolor == Goban.Board._BLACK:
-                return "D4"
-            else:
-                return "E4"
-        return None
-
-    def opening2(self):
-        # Play a stone on the fourth line of the star point, at D5 or E5
-        if self._board[43] == Goban.Board._EMPTY and self._board[44] == Goban.Board._EMPTY:
-            if self._mycolor == Goban.Board._BLACK:
-                return "D5"
-            else:
-                return "E5"
-        return None
-
-    def opening3(self):
-        # Play a stone on the third line of the star point, at C3 or F3
-        if self._board[23] == Goban.Board._EMPTY and self._board[26] == Goban.Board._EMPTY:
-            if self._mycolor== Goban.Board._BLACK:
-                return "C3"
-            else:
-                return "F3"
-        return None
-    
-    def play_big_move(self):
-        # Get the legal moves for the current player
-        legal_moves = [self._board.flat_to_name(m) for m in self._board.legal_moves()]
-
-        # Check if any of the legal moves correspond to a big move
-        big_moves = ['D4', 'D16', 'J4', 'J16']
-        for move in big_moves:
-            if move in legal_moves:
-                print("Playing a big move: ", move)
-                self._board.push(self._board.name_to_flat(move))
-                return move
-
-        # If no big moves are available, return None
-        return None
-
-
-    def getPlayerMove(self):
-
-
+    def getPlayerMove(self): 
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return "PASS"
-        
 
-        # Get the legal moves for the current player
         legal_moves = [self._board.flat_to_name(m) for m in self._board.legal_moves()]
 
-        
-        if self.opening1() in legal_moves:
-            move = self.opening1()
-            print("I am playing an opening move: ", move)
-            self._board.push(self._board.name_to_flat(move))
-            return move
+        nn_input = self.get_state_for_nn(self._board) # Preparing the current state for the neural network
 
-        if self.opening2() in legal_moves:
-            move = self.opening2()
-            print("I am playing an opening move: ", move)
-            self._board.push(self._board.name_to_flat(move))
-            return move
+        nn_output = self.model.predict(np.expand_dims(nn_input, axis=0)) # Predicting the best move using the neural network
+        nn_output = np.squeeze(nn_output, axis=0)
 
-        if self.opening3() in legal_moves:
-            move = self.opening3()
-            print("I am playing an opening move: ", move)
-            self._board.push(self._board.name_to_flat(move))
-            return move
-        
-        # Check if a big move is available
-        big_move = self.play_big_move()
-        if big_move:
-            return big_move
-
-
-        # Set the maximum depth for the alpha-beta search
-        max_depth = 10
-
-        # Set the initial alpha and beta values
-        alpha = float('-inf')
-        beta = float('inf')
-
-        # Set a time limit for the search
-        start_time = time.time()
-        time_limit = 10
-
-        # If there is only one legal move, play it
-        if len(legal_moves) == 1:
-            move = legal_moves[0]
-            print("I am playing ", move)
-            self._board.push(self._board.name_to_flat(move))
-            return move
-
-        # Otherwise, use alpha-beta with iterative deepening to find the best move
+        # Finding the best move with the highest probability from the neural network output
         best_move = None
-        for depth in range(1, max_depth + 1):
-            current_best_move, current_best_score = self.alpha_beta(self._board, depth, alpha, beta, start_time, time_limit)
-            if current_best_score is not None:
-                best_move = current_best_move
-                alpha = current_best_score
-            if time.time() - start_time > time_limit:
-                break
+        best_probability = -1
 
-        self._board.push(self._board.name_to_flat(self._board.flat_to_name(best_move)))
+        for move in legal_moves:
+            i, j = Board.name_to_coord(move)
+            probability = nn_output[i, j, 0]
+
+            if probability > best_probability:
+                best_move = move
+                best_probability = probability
 
         print("I am playing ", best_move)
-        return self._board.flat_to_name(best_move)
+        self._board.push(Board.name_to_flat(best_move))
+        return best_move
 
-    def alpha_beta(self, board, depth, alpha, beta, start_time, time_limit):
-        best_move = None
+
+    def find_best_move_nn(self, legal_moves):  # Find the best move using the neural network
+        board_state = self.get_state_for_nn(self._mycolor)
+
+        predicted_moves = self.model.predict(np.array([board_state]))[0]
+
         best_score = None
-        for move in board.legal_moves():
-            if time.time() - start_time > time_limit:
-                break
-            board.push(move)
-            score = self.minimax(board, depth - 1, alpha, beta, False, start_time, time_limit)
-            board.pop()
+        best_move = None
+
+        for move in legal_moves:
+            score = predicted_moves[self._board.flatten(move) // 2] # Calculate the score for the current move from predicted_moves
             if best_score is None or score > best_score:
-                best_move = move
+                # If this is the first move or the current move has a better score, update the best_score and best_move 
                 best_score = score
-                alpha = max(alpha, best_score)
-                if beta <= alpha:
-                    break
-        return best_move, best_score
-    
-    def minimax(self, board, depth, alpha, beta, is_maximizing_player, start_time, time_limit):
-        if depth == 0 or board.is_game_over():
-            return self.ImprovedEvaluation(board)
+                best_move = move
 
-        if is_maximizing_player:
-            max_score = float('-inf')
-            for move in board.legal_moves():
-                if time.time() - start_time > time_limit:
-                    break
-                board.push(move)
-                score = self.minimax(board, depth - 1, alpha, beta, False, start_time, time_limit)
-                board.pop()
-                max_score = max(max_score, score)
-                alpha = max(alpha, max_score)
-                if beta <= alpha:
-                    break
-            return max_score
-        else:
-            min_score = float('inf')
-            for move in board.legal_moves():
-                if time.time() - start_time > time_limit:
-                    break
-                board.push(move)
-                score = self.minimax(board, depth - 1, alpha, beta, True, start_time, time_limit)
-                board.pop()
-                min_score = min(min_score, score)
-                beta = min(beta, min_score)
-                if beta <= alpha:
-                    break
-            return min_score
+        if best_move is None:
+            best_move = choice(legal_moves)
 
-    def liberties(self, board, color):
-        visited = set()
-        liberties = 0
+        return best_move
 
-        for i in range(board._BOARDSIZE):
-            for j in range(board._BOARDSIZE):
-                coord = Goban.Board.flatten((i, j))
-                if coord not in visited and board._board[coord] == color:
-                    group, group_liberties = self.get_group_and_liberties(board, (i,j))
-                    visited.update(group)
-                    liberties += len(group_liberties)
-
-        return liberties
-  
-    def ImprovedEvaluation(self,board):
-        if board.is_game_over():
-            winner = board.result()
-            if winner == self._mycolor:
-                return float("inf")
-            elif winner == Goban.Board.flip(self._mycolor):
-                return float("-inf")
-            else:
-                return 0
-
-        scores = (self._board._nbBLACK, self._board._nbWHITE)
-        score_diff = scores[self._mycolor - 1] - scores[Goban.Board.flip(self._mycolor) - 1]
-
-        legal_moves_count = len(board.legal_moves())
-        temp_board = deepcopy(board)
-        temp_board.play_move(-1)
-        opponent_legal_moves_count = len(temp_board.legal_moves())
-        legal_moves_diff = legal_moves_count - opponent_legal_moves_count
-
-        my_liberties = self.liberties(board, self._mycolor)
-        opponent_liberties = self.liberties(board, Goban.Board.flip(self._mycolor))
-        liberties_diff = my_liberties - opponent_liberties
-
-        my_groups = self.get_groups(board, self._mycolor)
-        my_group_liberties = [len(liberties) for group, liberties in my_groups]
-        opponent_groups = self.get_groups(board, Goban.Board.flip(self._mycolor))
-        opponent_group_liberties = [len(liberties) for group, liberties in opponent_groups]
-
-
-        groups_diff = len(my_groups) - len(opponent_groups)
-        group_liberties_diff = sum(my_group_liberties) - sum(opponent_group_liberties)
-
-        my_influence = self.calculate_influence(board, self._mycolor)
-        opponent_influence = self.calculate_influence(board, Goban.Board.flip(self._mycolor))
-        influence_diff = my_influence - opponent_influence
-
-        if self._mycolor == Goban.Board._WHITE:
-            captured_diff = board._capturedWHITE - board._capturedBLACK
-        else:
-            captured_diff = board._capturedBLACK - board._capturedWHITE
-
-
-        # Assign weights to the different factors
-        w_score = 10
-        w_legal_moves = 3
-        w_liberties = 1
-        w_groups = 2
-        w_group_liberties = 5
-        w_influence = 4
-        w_captured = 2
-
-        evaluation_score = (
-            w_score * score_diff +
-            w_legal_moves * legal_moves_diff +
-            w_liberties * liberties_diff +
-            w_groups * groups_diff +
-            w_group_liberties * group_liberties_diff +
-            w_influence * influence_diff +
-            w_captured * captured_diff
-        )
-
-        return evaluation_score
-
-    def calculate_influence(self, board, color):
-        influence_board = [[0] * board._BOARDSIZE for _ in range(board._BOARDSIZE)]
-
-        for x in range(board._BOARDSIZE):
-            for y in range(board._BOARDSIZE):
-                pos = (x, y)
-                fpos = Goban.Board.flatten(pos)  # Convert 2D coordinates to 1D
-                if board.__getitem__(fpos) == color:
-                    for nx in range(board._BOARDSIZE):
-                        for ny in range(board._BOARDSIZE):
-                            dist = abs(nx - x) + abs(ny - y)
-                            influence_board[nx][ny] += 1 / (dist + 1)
-
-        total_influence = sum(sum(row) for row in influence_board)
-        return total_influence
-
-
-    def get_groups(self, board, color):
-        visited = set()
-        groups = []
-
-        for x in range(board._BOARDSIZE):
-            for y in range(board._BOARDSIZE):
-                pos = (x, y)
-                fpos = Goban.Board.flatten(pos)  # Convert 2D coordinates to 1D
-                if pos not in visited and board.__getitem__(fpos) == color:
-                    group, liberties = self.get_group_and_liberties(board, pos)
-                    groups.append((group, liberties))
-                    visited.update(group)
-
-        return groups
-
-
-    def get_group_and_liberties(self, board, pos):
-        group = set()
-        liberties = set()
-        stack = [pos]
-        fpos = Goban.Board.flatten(pos)  # Convert 2D coordinates to 1D
-        color = board.__getitem__(fpos)  # Access _board using 1D coordinates
-
-        while stack:
-            x, y = stack.pop()
-            group.add((x, y))
-
-            for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                nx, ny = x + dx, y + dy
-                if 0 <= nx < board._BOARDSIZE and 0 <= ny < board._BOARDSIZE:
-                    npos = (nx, ny)
-                    fnpos = Goban.Board.flatten(npos)  # Convert 2D coordinates to 1D
-                    if board.__getitem__(fnpos) == color and npos not in group:
-                        stack.append(npos)
-                    elif board.__getitem__(fnpos) == Goban.Board._EMPTY:
-                        liberties.add(npos)
-
-        return group, liberties
-
-
-
-        
     def playOpponentMove(self, move):
-        print("Opponent played ", move) # New here
-        # the board needs an internal represetation to push the move.  Not a string
-        self._board.push(Goban.Board.name_to_flat(move)) 
+        self._board.push(self._board.name_to_flat(move))
 
     def newGame(self, color):
         self._mycolor = color
-        self._opponent = Goban.Board.flip(color)
+        self._opponent = Board.flip(color)
 
     def endGame(self, winner):
         if self._mycolor == winner:
             print("I won!!!")
         else:
             print("I lost :(!!")
-
-
-
