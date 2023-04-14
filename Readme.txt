@@ -7,7 +7,9 @@ Team :  Mohammed Seddiq ELALAOUI - Atman BOZ   --  G2
 
 
 # 1. Joueur officiel
-
+Il s'agit du joueur fourni dans myPlayer.py. Ce programme concerne un joueur de Go qui utilise un réseau neuronal pour prédire le meilleur coup à jouer. Le réseau neuronal 
+a été entraîné en combinant trois ensembles de données distincts. Pour importer et traiter les données, exécutez le script ImportAndExtract.py. Ce script générera les 
+ensembles de données d'entraînement, de validation et de test traités à l'aide de pickle. Ensuite, le fichier opNeuralNetwork.py utilisera ces ensembles pour créer le modèle.
 
 
 # 2. Joueur MCTS
